@@ -1,0 +1,43 @@
+{
+    "C_Cpp.intelliSenseEngine": "default",
+    "idf.adapterTargetName": "esp32",
+    "idf.customExtraPaths": "C:\\Users\\Jalal\\.espressif\\tools\\xtensa-esp-elf-gdb\\11.2_20220823\\xtensa-esp-elf-gdb\\bin;C:\\Users\\Jalal\\.espressif\\tools\\riscv32-esp-elf-gdb\\11.2_20220823\\riscv32-esp-elf-gdb\\bin;C:\\Users\\Jalal\\.espressif\\tools\\xtensa-esp32-elf\\esp-2021r2-patch5-8.4.0\\xtensa-esp32-elf\\bin;C:\\Users\\Jalal\\.espressif\\tools\\xtensa-esp32s2-elf\\esp-2021r2-patch5-8.4.0\\xtensa-esp32s2-elf\\bin;C:\\Users\\Jalal\\.espressif\\tools\\xtensa-esp32s3-elf\\esp-2021r2-patch5-8.4.0\\xtensa-esp32s3-elf\\bin;C:\\Users\\Jalal\\.espressif\\tools\\riscv32-esp-elf\\esp-2021r2-patch5-8.4.0\\riscv32-esp-elf\\bin;C:\\Users\\Jalal\\.espressif\\tools\\esp32ulp-elf\\2.35_20220830\\esp32ulp-elf\\bin;C:\\Users\\Jalal\\.espressif\\tools\\cmake\\3.23.1\\bin;C:\\Users\\Jalal\\.espressif\\tools\\openocd-esp32\\v0.12.0-esp32-20230921\\openocd-esp32\\bin;C:\\Users\\Jalal\\.espressif\\tools\\ninja\\1.10.2;C:\\Users\\Jalal\\.espressif\\tools\\idf-exe\\1.0.3;C:\\Users\\Jalal\\.espressif\\tools\\ccache\\4.3\\ccache-4.3-windows-64;C:\\Users\\Jalal\\.espressif\\tools\\dfu-util\\0.9\\dfu-util-0.9-win64",
+    "idf.customExtraVars": {
+        "OPENOCD_SCRIPTS": "C:\\Users\\Jalal\\.espressif\\tools\\openocd-esp32\\v0.12.0-esp32-20230921/openocd-esp32/share/openocd/scripts",
+        "IDF_CCACHE_ENABLE": "1"
+    },
+    "idf.espIdfPathWin": "C:\\Users\\Jalal\\esp\\v4.4\\esp-idf",
+    "idf.openOcdConfigs": [
+        "interface/ftdi/esp32_devkitj_v1.cfg",
+        "target/esp32.cfg"
+    ],
+    "idf.portWin": "COM6",
+    "idf.pythonBinPathWin": "C:\\Users\\Jalal\\.espressif\\python_env\\idf4.4_py3.8_env\\Scripts\\python.exe",
+    "idf.toolsPathWin": "C:\\Users\\Jalal\\.espressif",
+    "idf.flashType": "UART",
+    "files.associations": {
+        "protocol_examples_common.h": "c",
+        "coap.h": "c",
+        "ctype.h": "c",
+        "random": "cpp",
+        "nvs.h": "c",
+        "nvs_flash.h": "c",
+        "string.h": "c",
+        "stddef.h": "c",
+        "esp_log.h": "c",
+        "*.tcc": "c",
+        "non_volatile_storage.h": "c",
+        "array": "cpp",
+        "deque": "cpp",
+        "list": "cpp",
+        "string": "cpp",
+        "unordered_map": "cpp",
+        "unordered_set": "cpp",
+        "vector": "cpp",
+        "string_view": "cpp",
+        "initializer_list": "cpp",
+        "regex": "cpp",
+        "system_error": "cpp",
+        "*.ipp": "cpp"
+    }
+}
