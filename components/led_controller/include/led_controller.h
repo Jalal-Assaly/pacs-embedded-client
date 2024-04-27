@@ -2,9 +2,9 @@
 #define LED_CONTROLLER
 
 // Define the pins for RGB LED
-#define     LED_RED       (19)
-#define     LED_GREEN     (18)
-#define     LED_BLUE      (5)
+#define     LED_RED       (4)
+#define     LED_GREEN     (2)
+#define     LED_BLUE      (15)
 
 // Define colors
 #define     LED_OFF     0

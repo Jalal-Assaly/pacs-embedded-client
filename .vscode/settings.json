@@ -38,6 +38,7 @@
         "initializer_list": "cpp",
         "regex": "cpp",
         "system_error": "cpp",
-        "*.ipp": "cpp"
+        "*.ipp": "cpp",
+        "cstdint": "cpp"
     }
 }

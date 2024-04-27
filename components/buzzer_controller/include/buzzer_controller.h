@@ -1,7 +1,7 @@
 #ifndef BUZZER_CONTROLLER_H
 #define BUZZER_CONTROLLER_H
 
-#define     BUZZER      (23)
+#define     BUZZER      (21)
 
 void buzzer_init();
 void buzzer_on();

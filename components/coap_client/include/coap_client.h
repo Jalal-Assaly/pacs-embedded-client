@@ -18,6 +18,6 @@ coap_response_t message_handler(coap_session_t *session, const coap_pdu_t *sent,
 void coap_log_handler(coap_log_t level, const char *message);
 coap_address_t *coap_get_address(coap_uri_t *uri);
 int coap_build_optlist(coap_uri_t *uri);
-void coap_example_client(void *p);
+void coap_example_client(void* params);
 
 #endif /* COAP_CLIENT_H */

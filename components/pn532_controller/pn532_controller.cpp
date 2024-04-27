@@ -1,15 +1,71 @@
 #include "pn532_controller.h"
 
 #include <Arduino.h>
-// #include <SPI.h>
+
+#if 0
+#include <SPI.h>
 #include <Adafruit_PN532.h>
+Adafruit_PN532 nfc(PN532_SS, &SPI);
 
-/* Create and Initialize PN532 Reader */
-Adafruit_PN532 nfc(PN532_SCK, PN532_MISO, PN532_MOSI, PN532_SS);
+#elif 1
+#include <SPI.h>
+#include <PN532_SPI.h>
+#include "PN532.h"
 
-/* Global variable UUID */
-uint8_t uid[] = {0, 0, 0, 0, 0, 0, 0}; // Buffer to store the returned UID
+PN532_SPI pn532spi(SPI, PN532_SS);
+PN532 nfc(pn532spi);
+
+/* When the number after #elif set as 1, it will be switch to HSU Mode*/
+#elif 0
+#include <PN532_HSU.h>
+#include <PN532.h>
+
+PN532_HSU pn532hsu(Serial1);
+PN532 nfc(pn532hsu);
+
+/* When the number after #if & #elif set as 0, it will be switch to SWHSU Mode*/
+#elif 0
+#include <NfcAdapter.h>
+#include <SoftwareSerial.h>
+#include <PN532_SWHSU.h>
+#include <PN532.h>
+
+SoftwareSerial SWSerial(PN532_RX, PN532_TX); // RX, TX
+PN532_SWHSU pn532swhsu(SWSerial);
+PN532 nfc(pn532swhsu);
+NfcAdapter nfc2(pn532swhsu);
+
+/* When the number after #if & #elif set as 0, it will be switch to I2C Mode*/
+#else
+#include <Wire.h>
+#include <PN532_I2C.h>
+#include <PN532.h>
+#include <NfcAdapter.h>
+
+PN532_I2C pn532i2c(Wire);
+PN532 nfc(pn532i2c);
+#endif
+
+#define RESPONSE_SIZE 255
+
+/* UUID length and value */
 uint8_t uidLength;                     // Length of the UID (4 or 7 bytes depending on ISO14443A card type)
+uint8_t uid[] = {0, 0, 0, 0, 0, 0, 0}; // Buffer to store the returned UID
+
+/* ADPU value */
+uint8_t SELECT_APDU[] = {
+    0x00,                                     /* CLA */
+    0xA4,                                     /* INS */
+    0x04,                                     /* P1  */
+    0x00,                                     /* P2  */
+    0x07,                                     /* Length of AID  */
+    0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* AID  */
+    0x00                                      /* Le  */
+};
+
+/* Response value and length for APDU protocol */
+uint8_t response[RESPONSE_SIZE];
+uint8_t responseLength = RESPONSE_SIZE;
 
 void pn532_init()
 {
@@ -32,23 +88,18 @@ void pn532_init()
     Serial.println((versiondata >> 8) & 0xFF, DEC);
 
     nfc.setPassiveActivationRetries(0xFF);
+    nfc.SAMConfig();
 
-    Serial.println("Waiting for an ISO14443A card");
+    Serial.println("Waiting for an ISO14443A card\n");
 }
 
-bool pn532_readPassiveTag()
+bool pn532_readPassiveTagUID()
 {
-    // Wait for an ISO14443A type cards (Mifare, etc.).  When one is found
-    // 'uid' will be populated with the UID, and uidLength will indicate
-    // if the uid is 4 bytes (Mifare Classic) or 7 bytes (Mifare Ultralight)
-    boolean success = nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
-
-    return success;
+    return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
 }
 
-void pn532_printUUID()
+uint8_t *pn532_getUID()
 {
-    Serial.println("Found a card!");
     Serial.print("UID Length: ");
     Serial.print(uidLength, DEC);
     Serial.println(" bytes");
@@ -59,4 +110,50 @@ void pn532_printUUID()
         Serial.print(uid[i], HEX);
     }
     Serial.println("");
+
+    return uid;
+}
+
+bool pn532_startExchange()
+{
+    // set shield to inListPassiveTarget
+    bool success = nfc.inListPassiveTarget();
+
+    if (success)
+    {
+        // Reset response length and value
+        responseLength = RESPONSE_SIZE;
+        std::fill_n(response, responseLength, 0);
+
+        // Attempts to send APDU message and receive response
+        success = nfc.inDataExchange(SELECT_APDU, sizeof(SELECT_APDU), response, &responseLength);
+
+        if (success)
+        {
+            Serial.println("SELECT AID sent");
+
+            Serial.print("responseLength: ");
+            Serial.println(responseLength);
+            nfc.PrintHexChar(response, responseLength); // Show response in bytes
+
+            // Release the currently selected target
+            nfc.inRelease();
+            Serial.println("Target released\n");
+        }
+        else
+        {
+            Serial.println("Failed sending SELECT AID\n");
+        }
+    }
+    else
+    {
+        Serial.println("Didn't find passive tag!\n");
+    }
+
+    return success;
+}
+
+uint8_t *pn532_getAPDUResponse()
+{
+    return response;
 }

@@ -12,6 +12,10 @@ static int resp_wait = 1;
 static coap_optlist_t *optlist = NULL;
 static int wait_ms;
 
+typedef struct {
+    uint8_t* payload;
+} CoapTaskParams;
+
 coap_response_t
 message_handler(coap_session_t *session,
                 const coap_pdu_t *sent,
@@ -206,8 +210,11 @@ coap_start_psk_session(coap_context_t *ctx, coap_address_t *dst_addr, coap_uri_t
 }
 #endif /* CONFIG_COAP_MBEDTLS_PSK */
 
-void coap_example_client(void *p)
+void coap_example_client(void* params)
 {
+    CoapTaskParams* taskParams = (CoapTaskParams*)params;
+    uint8_t* payload = taskParams->payload;
+    
     coap_address_t *dst_addr;
     static coap_uri_t uri;
     const char *server_uri = COAP_DEFAULT_DEMO_URI;
@@ -293,9 +300,10 @@ void coap_example_client(void *p)
                                                               COAP_MEDIATYPE_APPLICATION_JSON),
                                          buf));
 
-    const char *payload = "Hello";
-    size_t payload_size = strlen(payload);
-    coap_add_data_large_request(session, request, payload_size, (const uint8_t *)payload, NULL, NULL);
+    ESP_LOGI(TAG, "payload for CoAP request is %s", (char*)payload);
+    ESP_LOGI(TAG, "payload size for CoAP request is %u", sizeof(payload));
+
+    coap_add_data_large_request(session, request, sizeof(payload), payload, NULL, NULL);
 
     coap_add_optlist_pdu(request, &optlist);
 
@@ -320,12 +328,6 @@ void coap_example_client(void *p)
             }
         }
     }
-    for (int countdown = 10; countdown >= 0; countdown--)
-    {
-        ESP_LOGI(TAG, "%d... ", countdown);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);
-    }
-    ESP_LOGI(TAG, "Starting again!");
 
 clean_up:
     if (optlist)
