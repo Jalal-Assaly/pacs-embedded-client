@@ -1,6 +1,6 @@
 #include "coap_client.h"
 
-#define COAP_DEFAULT_TIME_SEC 60
+#define COAP_DEFAULT_TIME_SEC 20
 #define EXAMPLE_COAP_PSK_KEY CONFIG_EXAMPLE_COAP_PSK_KEY
 #define EXAMPLE_COAP_PSK_IDENTITY CONFIG_EXAMPLE_COAP_PSK_IDENTITY
 #define EXAMPLE_COAP_LOG_DEFAULT_LEVEL CONFIG_COAP_LOG_DEFAULT_LEVEL
@@ -12,15 +12,24 @@ static int resp_wait = 1;
 static coap_optlist_t *optlist = NULL;
 static int wait_ms;
 
-typedef struct {
-    uint8_t* payload;
+/* Define structure to pass and receive values from and to main file */
+typedef struct
+{
+    uint8_t *payload;
+    uint8_t payloadSize;
+    uint8_t *response;
+    uint8_t responseSize;
+    bool received;
 } CoapTaskParams;
 
+CoapTaskParams *coapTaskParams;
+
 coap_response_t
-message_handler(coap_session_t *session,
-                const coap_pdu_t *sent,
-                const coap_pdu_t *received,
-                const coap_mid_t mid)
+response_handler(coap_session_t *session,
+                 const coap_pdu_t *sent,
+                 const coap_pdu_t *received,
+                 const coap_mid_t mid,
+                 void *params)
 {
     const unsigned char *data = NULL;
     size_t data_len;
@@ -36,6 +45,10 @@ message_handler(coap_session_t *session,
             {
                 printf("Unexpected partial data received offset %u, length %u\n", offset, data_len);
             }
+
+            /* Assign pointers to response */
+            coapTaskParams->response = data;
+            coapTaskParams->responseSize = data_len;
             printf("Received:\n%.*s\n", (int)data_len, data);
             resp_wait = 0;
         }
@@ -210,11 +223,17 @@ coap_start_psk_session(coap_context_t *ctx, coap_address_t *dst_addr, coap_uri_t
 }
 #endif /* CONFIG_COAP_MBEDTLS_PSK */
 
-void coap_example_client(void* params)
+void coap_send_request(void *params)
 {
-    CoapTaskParams* taskParams = (CoapTaskParams*)params;
-    uint8_t* payload = taskParams->payload;
-    
+    /* Link structures */
+    CoapTaskParams *taskParams = (CoapTaskParams *)params;
+    uint8_t *payload = taskParams->payload;
+    uint8_t payloadSize = taskParams->payloadSize;
+
+    /* Setup global structure to point to the same location as local params */
+    coapTaskParams = taskParams;
+
+    /* Define request properties */
     coap_address_t *dst_addr;
     static coap_uri_t uri;
     const char *server_uri = COAP_DEFAULT_DEMO_URI;
@@ -238,8 +257,10 @@ void coap_example_client(void* params)
     coap_context_set_block_mode(ctx,
                                 COAP_BLOCK_USE_LIBCOAP | COAP_BLOCK_SINGLE_BODY);
 
-    coap_register_response_handler(ctx, message_handler);
+    /* Setup function that will retrieve and print CoAP response (declared above) */
+    coap_register_response_handler(ctx, response_handler);
 
+    /* Fetch configurations of URI, destination address and options list from menu config */
     if (coap_split_uri((const uint8_t *)server_uri, strlen(server_uri), &uri) == -1)
     {
         ESP_LOGE(TAG, "CoAP server uri error");
@@ -252,21 +273,8 @@ void coap_example_client(void* params)
     if (!dst_addr)
         goto clean_up;
 
-    /*
-     * Note that if the URI starts with just coap:// (not coaps://) the
-     * session will still be plain text.
-     *
-     * coaps+tcp:// is NOT yet supported by the libcoap->mbedtls interface
-     * so COAP_URI_SCHEME_COAPS_TCP will have failed in a test above,
-     * but the code is left in for completeness.
-     */
     if (uri.scheme == COAP_URI_SCHEME_COAPS || uri.scheme == COAP_URI_SCHEME_COAPS_TCP)
     {
-#ifndef CONFIG_MBEDTLS_TLS_CLIENT
-        ESP_LOGE(TAG, "MbedTLS (D)TLS Client Mode not configured");
-        goto clean_up;
-#endif /* CONFIG_MBEDTLS_TLS_CLIENT */
-
 #ifdef CONFIG_COAP_MBEDTLS_PSK
         session = coap_start_psk_session(ctx, dst_addr, &uri);
 #endif /* CONFIG_COAP_MBEDTLS_PSK */
@@ -282,6 +290,7 @@ void coap_example_client(void* params)
         goto clean_up;
     }
 
+    /* Create Session and Protocol Data Unit for request */
     request = coap_new_pdu(coap_is_mcast(dst_addr) ? COAP_MESSAGE_NON : COAP_MESSAGE_CON,
                            COAP_REQUEST_CODE_PUT, session);
     if (!request)
@@ -289,10 +298,12 @@ void coap_example_client(void* params)
         ESP_LOGE(TAG, "coap_new_pdu() failed");
         goto clean_up;
     }
+
     /* Add in an unique token */
     coap_session_new_token(session, &tokenlength, token);
     coap_add_token(request, tokenlength, token);
 
+    /* Create option list (4 bytes) */
     u_char buf[4];
     coap_insert_optlist(&optlist,
                         coap_new_optlist(COAP_OPTION_CONTENT_FORMAT,
@@ -300,18 +311,20 @@ void coap_example_client(void* params)
                                                               COAP_MEDIATYPE_APPLICATION_JSON),
                                          buf));
 
-    ESP_LOGI(TAG, "payload for CoAP request is %s", (char*)payload);
-    ESP_LOGI(TAG, "payload size for CoAP request is %u", sizeof(payload));
+    /* Create request and add session, payload, payload size */
+    coap_add_data_large_request(session, request, payloadSize, payload, NULL, NULL);
 
-    coap_add_data_large_request(session, request, sizeof(payload), payload, NULL, NULL);
-
+    /* Add option list to request */
     coap_add_optlist_pdu(request, &optlist);
 
-    resp_wait = 1;
+    /* Send CoAP request */
     coap_send(session, request);
 
+    /* Define waiting times for response */
+    resp_wait = 1;
     wait_ms = COAP_DEFAULT_TIME_SEC * 1000;
 
+    /* Waits and keeps track of elapsed time. Terminates process if takes long */
     while (resp_wait)
     {
         int result = coap_io_process(ctx, wait_ms > 1000 ? 1000 : wait_ms);
@@ -329,6 +342,7 @@ void coap_example_client(void* params)
         }
     }
 
+/* Clean task and memory before terminating */
 clean_up:
     if (optlist)
     {
@@ -344,6 +358,9 @@ clean_up:
         coap_free_context(ctx);
     }
     coap_cleanup();
+
+    // Set received flag positive before closing task
+    coapTaskParams->received = true;
 
     ESP_LOGI(TAG, "Finished");
     vTaskDelete(NULL);

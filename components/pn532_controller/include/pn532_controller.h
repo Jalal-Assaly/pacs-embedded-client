@@ -20,6 +20,7 @@ bool pn532_readPassiveTagUID();
 uint8_t* pn532_getUID();
 
 bool pn532_startExchange();
-uint8_t* pn532_getAPDUResponse();
+uint8_t* pn532_getAPDUPayload();
+uint8_t pn532_getAPDUPayloadSize();
 
 #endif

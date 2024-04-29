@@ -134,7 +134,8 @@ bool pn532_startExchange()
 
             Serial.print("responseLength: ");
             Serial.println(responseLength);
-            nfc.PrintHexChar(response, responseLength); // Show response in bytes
+            Serial.print("response: ");
+            Serial.println((char*) response);// Show response in bytes
 
             // Release the currently selected target
             nfc.inRelease();
@@ -153,7 +154,12 @@ bool pn532_startExchange()
     return success;
 }
 
-uint8_t *pn532_getAPDUResponse()
+uint8_t *pn532_getAPDUPayload()
 {
     return response;
+}
+
+uint8_t pn532_getAPDUPayloadSize()
+{
+    return responseLength;
 }
