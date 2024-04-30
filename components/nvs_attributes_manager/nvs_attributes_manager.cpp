@@ -1,43 +1,50 @@
 #include "nvs_attributes_manager.h"
 #include "non_volatile_storage.h"
 
-void nvs_attributesInit() {
+void nvs_attributesInit()
+{
     NVS.begin("attributes");
 
-    // NVS.setString("id", "1");
-    // NVS.setString("location", "Workspace");
-    // NVS.setString("isTampered", "false");
+    // Set static attributes of access point (never changed)
+    NVS.setString("id", ACCESS_POINT_ID);
+    NVS.setString("location", ACCESS_POINT_LOCATION);
+
+    // Set dynamic attributes of access point (changed with access attempts)
+    if (!NVS.getInt("isTampered")) NVS.setInt("isTampered", false);
+    if (!NVS.getInt("occupancyLevel")) NVS.setInt("occupancyLevel", 0);
 }
 
-bool nvs_setStringAttribute(String key, String value) {
-    bool success;
-    
-    if (NVS.getString(key) != NULL) {
-        success = NVS.setString(key, value);
-    }
-    else {
-        success = false;
-    }
-    
-    return success;
-}
-String nvs_getStringAttribute(String key) {
-    return NVS.getString(key);
+bool nvs_setStringAttribute(const char* key, char* value)
+{
+    return NVS.setString(key, value);
 }
 
-bool nvs_setIntAttribute(String key, uint64_t value) {
-    bool success;
-    
-    if (NVS.getInt(key) != NULL) {
-        success = NVS.setInt(key, value);
-    }
-    else {
-        success = false;
-    }
-    
-    return success;
+const char* nvs_getStringAttribute(const char* key)
+{
+    return strdup(NVS.getString(key).c_str());
 }
 
-uint64_t nvs_getIntAttribute(String key) {
+bool nvs_setIntAttribute(const char* key, uint64_t value)
+{
+    return NVS.setInt(key, value);
+}
+
+uint64_t nvs_getIntAttribute(const char* key)
+{
     return NVS.getInt(key);
+}
+
+bool nvs_setBoolAttribute(const char* key, uint8_t value) 
+{
+    return NVS.setInt(key, value);
+}
+
+bool nvs_getBoolAttribute(const char* key)
+{
+    return NVS.getInt(key);
+}
+
+
+bool nvs_eraseAll() {
+    return NVS.eraseAll();
 }

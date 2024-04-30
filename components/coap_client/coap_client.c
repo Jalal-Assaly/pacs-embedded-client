@@ -12,18 +12,8 @@ static int resp_wait = 1;
 static coap_optlist_t *optlist = NULL;
 static int wait_ms;
 
-/* Define structure to pass and receive values from and to main file */
-typedef struct
-{
-    uint8_t *payload;
-    uint8_t payloadSize;
-    uint8_t *response;
-    uint8_t responseSize;
-    bool received;
-} CoapTaskParams;
-
-CoapTaskParams *coapTaskParams;
-
+responseStruct *globalResponsePayload; // Global response structure
+ 
 coap_response_t
 response_handler(coap_session_t *session,
                  const coap_pdu_t *sent,
@@ -46,9 +36,10 @@ response_handler(coap_session_t *session,
                 printf("Unexpected partial data received offset %u, length %u\n", offset, data_len);
             }
 
-            /* Assign pointers to response */
-            coapTaskParams->response = data;
-            coapTaskParams->responseSize = data_len;
+            /* Initialize and store response in global structure */
+            globalResponsePayload->response = data;
+            globalResponsePayload->responseSize = data_len;
+
             printf("Received:\n%.*s\n", (int)data_len, data);
             resp_wait = 0;
         }
@@ -223,16 +214,8 @@ coap_start_psk_session(coap_context_t *ctx, coap_address_t *dst_addr, coap_uri_t
 }
 #endif /* CONFIG_COAP_MBEDTLS_PSK */
 
-void coap_send_request(void *params)
+void coap_send_request(requestStruct *requestPayload, responseStruct *responsePayload)
 {
-    /* Link structures */
-    CoapTaskParams *taskParams = (CoapTaskParams *)params;
-    uint8_t *payload = taskParams->payload;
-    uint8_t payloadSize = taskParams->payloadSize;
-
-    /* Setup global structure to point to the same location as local params */
-    coapTaskParams = taskParams;
-
     /* Define request properties */
     coap_address_t *dst_addr;
     static coap_uri_t uri;
@@ -242,6 +225,9 @@ void coap_send_request(void *params)
     coap_pdu_t *request = NULL;
     unsigned char token[8];
     size_t tokenlength;
+
+    /* Point global response structure to main response structure */
+    globalResponsePayload = responsePayload;
 
     /* Set up the CoAP logging */
     coap_set_log_handler(coap_log_handler);
@@ -312,7 +298,7 @@ void coap_send_request(void *params)
                                          buf));
 
     /* Create request and add session, payload, payload size */
-    coap_add_data_large_request(session, request, payloadSize, payload, NULL, NULL);
+    coap_add_data_large_request(session, request, requestPayload->requestSize, requestPayload->request, NULL, NULL);
 
     /* Add option list to request */
     coap_add_optlist_pdu(request, &optlist);
@@ -359,9 +345,5 @@ clean_up:
     }
     coap_cleanup();
 
-    // Set received flag positive before closing task
-    coapTaskParams->received = true;
-
     ESP_LOGI(TAG, "Finished");
-    vTaskDelete(NULL);
 }

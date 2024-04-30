@@ -17,4 +17,5 @@ void buzzer_onFor(unsigned long duration_ms) {
     digitalWrite(BUZZER, HIGH);
     delay(duration_ms);
     digitalWrite(BUZZER, LOW);
+    delay(duration_ms);
 }

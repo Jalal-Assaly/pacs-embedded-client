@@ -132,9 +132,9 @@ bool pn532_startExchange()
         {
             Serial.println("SELECT AID sent");
 
-            Serial.print("responseLength: ");
+            Serial.print("NFC payload length: ");
             Serial.println(responseLength);
-            Serial.print("response: ");
+            Serial.print("NFC payload: ");
             Serial.println((char*) response);// Show response in bytes
 
             // Release the currently selected target

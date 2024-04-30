@@ -40,6 +40,7 @@
         "system_error": "cpp",
         "*.ipp": "cpp",
         "cstdint": "cpp",
-        "event_groups.h": "c"
+        "event_groups.h": "c",
+        "thread": "cpp"
     }
 }

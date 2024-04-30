@@ -14,10 +14,19 @@
 
 #include "coap3/coap.h"
 
-coap_response_t message_handler(coap_session_t *session, const coap_pdu_t *sent, const coap_pdu_t *received, const coap_mid_t mid);
-void coap_log_handler(coap_log_t level, const char *message);
-coap_address_t *coap_get_address(coap_uri_t *uri);
-int coap_build_optlist(coap_uri_t *uri);
-void coap_send_request(void* params);
+/* Define structure to pass and receive requests and responses from and to main */
+typedef struct
+{
+    uint8_t *request;
+    size_t requestSize;
+} requestStruct;
+
+typedef struct
+{
+    uint8_t *response;
+    size_t responseSize;
+} responseStruct;
+
+void coap_send_request(requestStruct* requestPayload, responseStruct *responsePayload);
 
 #endif /* COAP_CLIENT_H */
