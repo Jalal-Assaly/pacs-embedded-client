@@ -1,12 +1,14 @@
 #include <Arduino.h>
+#include <cJSON.h>
 
+/* Include Components */
 #include <led_controller.h>
 #include <buzzer_controller.h>
 #include <lock_controller.h>
 #include <nvs_attributes_manager.h>
 #include <pn532_controller.h>
 #include <lcd_controller.h>
-#include <cJSON.h>
+#include <reed_controller.h>
 
 extern "C"
 {
@@ -17,6 +19,10 @@ extern "C"
 
 #include "protocol_examples_common.h"
 }
+
+/* Admin cards UID */
+const uint8_t ADMIN_CARD_UID[] = {0x73, 0x10, 0x92, 0x8A};
+const uint8_t ACCESS_CARD_UID[] = {0xD3, 0xD7, 0xD7, 0xE};
 
 /* Create global request and response structures to store payloads */
 requestStruct *requestPayload;
@@ -36,6 +42,9 @@ static bool getDecisionValue(cJSON *jsonObj, const char *key);
 static void grantAccess();
 static void denyAccess();
 
+/* Interrupt function in case of tampering */
+void isrReed();
+
 extern "C" void app_main(void)
 {
     /* Initialize Arduino as a component */
@@ -46,6 +55,12 @@ extern "C" void app_main(void)
     lcd_init();
     lcd_printHome("Device");
     lcd_printCustom("Initialization", 0, 2);
+
+    /* Initialze Non-Volatile Attributes Storage */
+    nvs_attributesInit();
+
+    /* Initialize Reed switch and attach interrupt function */
+    reed_init(isrReed);
 
     /* Initialize LED RGB */
     led_init();
@@ -58,9 +73,6 @@ extern "C" void app_main(void)
 
     /* Initialize PN532 Reader */
     pn532_init();
-
-    /* Initialze Non-Volatile Attributes Storage */
-    nvs_attributesInit();
 
     /* Initialize CoAP Protocol */
     ESP_ERROR_CHECK(esp_netif_init());                // Initialize TCP/UDP stack + WIFI (from menu config)
@@ -76,16 +88,19 @@ extern "C" void app_main(void)
     lcd_printCustom("Complete", 0, 2);
     delay(2000);
 
+    /* Manual check on reed switch after initialization */
+    isrReed();
+
     while (1)
     {
         /* Print initial message */
         lcd_printHome("Waiting for");
         lcd_printCustom("a card", 0, 2);
 
-        /* Wait for a card */
-        bool success = pn532_startExchange();
+        /* Attempts to perform APDU exchange with emulated card */
+        bool isEmulatedCard = pn532_startAPDUExchange();
 
-        if (success)
+        if (isEmulatedCard)
         {
             lcd_printHome("Request Pending...");
 
@@ -115,8 +130,38 @@ extern "C" void app_main(void)
             cJSON_Delete(requestJson);
             cJSON_Delete(responseJson);
         }
+
+        else if (!isEmulatedCard && pn532_startUIDExchange())
+        {
+            /* Attempts to read UID of regular card */
+            uint8_t *cardUID = pn532_getUID();
+
+            if (memcmp(cardUID, ADMIN_CARD_UID, sizeof(ADMIN_CARD_UID)) == 0)
+            {
+                lcd_printHome("Tamper reset !");
+                led_setRGB(LED_OFF, LED_OFF, LED_ON);
+                for (uint8_t i = 0; i < 2; i++)
+                    buzzer_onFor(500);
+                led_setRGB(LED_OFF, LED_OFF, LED_OFF);
+
+                /* Set isTampered flag to false in NVS */
+                nvs_setBoolAttribute("isTampered", false);
+                attachInterrupt(REED_DIGITAL_INPUT, isrReed, FALLING);
+            }
+            else if (memcmp(cardUID, ACCESS_CARD_UID, sizeof(ACCESS_CARD_UID)) == 0)
+            {
+                /* Open door for admin */
+                grantAccess();
+            }
+            else {
+                Serial.println("Admin cards not recognized !");
+            }
+        } else {
+            Serial.println("No card found !");
+        }
     }
 }
+
 
 static void requestStruct_init()
 {
@@ -290,8 +335,24 @@ static void denyAccess()
 
     led_setRGB(LED_ON, LED_OFF, LED_OFF);
     for (uint8_t i = 0; i < 3; i++)
-    {
         buzzer_onFor(200);
-    }
     led_setRGB(LED_OFF, LED_OFF, LED_OFF);
+}
+
+void isrReed()
+{
+    /* Double check to ensure consistent readings */
+    bool isTampered = digitalRead(REED_DIGITAL_INPUT);
+
+    if (!isTampered)
+    {
+        Serial.println("Tamper detected !!");
+        /* Set isTampered flag to true in NVS */
+        nvs_setBoolAttribute("isTampered", true);
+
+        Serial.println(nvs_getBoolAttribute("isTampered"));
+
+        /* Detach interrupt so it is triggered only once */
+        detachInterrupt(digitalPinToInterrupt(REED_DIGITAL_INPUT));
+    }
 }

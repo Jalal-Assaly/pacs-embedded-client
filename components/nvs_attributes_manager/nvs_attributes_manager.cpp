@@ -8,9 +8,9 @@ void nvs_attributesInit()
     // Set static attributes of access point (never changed)
     NVS.setString("id", ACCESS_POINT_ID);
     NVS.setString("location", ACCESS_POINT_LOCATION);
-
+    NVS.setInt("isTampered", (uint8_t)false);
+    
     // Set dynamic attributes of access point (changed with access attempts)
-    if (!NVS.getInt("isTampered")) NVS.setInt("isTampered", false);
     if (!NVS.getInt("occupancyLevel")) NVS.setInt("occupancyLevel", 0);
 }
 
@@ -41,7 +41,7 @@ bool nvs_setBoolAttribute(const char* key, uint8_t value)
 
 bool nvs_getBoolAttribute(const char* key)
 {
-    return NVS.getInt(key);
+    return (bool)NVS.getInt(key);
 }
 
 

@@ -93,9 +93,48 @@ void pn532_init()
     Serial.println("Waiting for an ISO14443A card\n");
 }
 
-bool pn532_readPassiveTagUID()
-{
+bool pn532_startUIDExchange() {
     return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
+}
+
+bool pn532_startAPDUExchange()
+{
+    Serial.println("Scanning emulated APDU card");
+    bool isInListPassiveTag = false;
+    bool isEmulatedAPDUCard = false;
+
+    // set shield to inListPassiveTarget
+    isInListPassiveTag = nfc.inListPassiveTarget();
+
+    if (isInListPassiveTag)
+    {
+        // Reset response length and value
+        responseLength = RESPONSE_SIZE;
+        std::fill_n(response, responseLength, 0);
+
+        // Attempts to send APDU message and receive response
+        isEmulatedAPDUCard = nfc.inDataExchange(SELECT_APDU, sizeof(SELECT_APDU), response, &responseLength);
+
+        if (isEmulatedAPDUCard)
+        {
+            Serial.println("SELECT AID sent");
+
+            Serial.print("NFC payload length: ");
+            Serial.println(responseLength);
+            Serial.print("NFC payload: ");
+            Serial.println((char *)response); // Show response in bytes
+
+            // Release the currently selected target
+            nfc.inRelease();
+            Serial.println("Target released\n");
+        }
+        else
+        {
+            Serial.println("Emulated card found but communication failed !\n");
+        }
+    }
+
+    return isInListPassiveTag & isEmulatedAPDUCard;
 }
 
 uint8_t *pn532_getUID()
@@ -112,46 +151,6 @@ uint8_t *pn532_getUID()
     Serial.println("");
 
     return uid;
-}
-
-bool pn532_startExchange()
-{
-    // set shield to inListPassiveTarget
-    bool success = nfc.inListPassiveTarget();
-
-    if (success)
-    {
-        // Reset response length and value
-        responseLength = RESPONSE_SIZE;
-        std::fill_n(response, responseLength, 0);
-
-        // Attempts to send APDU message and receive response
-        success = nfc.inDataExchange(SELECT_APDU, sizeof(SELECT_APDU), response, &responseLength);
-
-        if (success)
-        {
-            Serial.println("SELECT AID sent");
-
-            Serial.print("NFC payload length: ");
-            Serial.println(responseLength);
-            Serial.print("NFC payload: ");
-            Serial.println((char*) response);// Show response in bytes
-
-            // Release the currently selected target
-            nfc.inRelease();
-            Serial.println("Target released\n");
-        }
-        else
-        {
-            Serial.println("Failed sending SELECT AID\n");
-        }
-    }
-    else
-    {
-        Serial.println("Didn't find passive tag!\n");
-    }
-
-    return success;
 }
 
 uint8_t *pn532_getAPDUPayload()
