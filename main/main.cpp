@@ -147,6 +147,9 @@ extern "C" void app_main(void)
                 /* Set isTampered flag to false in NVS */
                 nvs_setBoolAttribute("isTampered", false);
                 attachInterrupt(REED_DIGITAL_INPUT, isrReed, FALLING);
+
+                /* Ensure that magnet is back */
+                isrReed();
             }
             else if (memcmp(cardUID, ACCESS_CARD_UID, sizeof(ACCESS_CARD_UID)) == 0)
             {
