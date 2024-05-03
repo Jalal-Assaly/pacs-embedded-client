@@ -41,6 +41,11 @@
         "*.ipp": "cpp",
         "cstdint": "cpp",
         "event_groups.h": "c",
-        "thread": "cpp"
+        "thread": "cpp",
+        "reed_controller.h": "c",
+        "stdio.h": "c",
+        "gpio.h": "c",
+        "cstring": "cpp",
+        "algorithm": "cpp"
     }
 }
