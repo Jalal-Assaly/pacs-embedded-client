@@ -59,7 +59,7 @@ uint8_t SELECT_APDU[] = {
     0x04,                                     /* P1  */
     0x00,                                     /* P2  */
     0x07,                                     /* Length of AID  */
-    0xF0, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, /* AID  */
+    0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F, 0x00, /* AID  */
     0x00                                      /* Le  */
 };
 
@@ -122,7 +122,7 @@ bool pn532_startAPDUExchange()
             Serial.print("NFC payload length: ");
             Serial.println(responseLength);
             Serial.print("NFC payload: ");
-            Serial.println((char *)response); // Show response in bytes
+            Serial.println((char*)response); // Show response in bytes
 
             // Release the currently selected target
             nfc.inRelease();

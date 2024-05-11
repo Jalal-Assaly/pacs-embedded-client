@@ -8,6 +8,7 @@
 #include <nvs_attributes_manager.h>
 #include <pn532_controller.h>
 #include <lcd_controller.h>
+#include <button_controller.h>
 #include <reed_controller.h>
 
 extern "C"
@@ -20,6 +21,9 @@ extern "C"
 #include "protocol_examples_common.h"
 }
 
+/* APDU Error Response */
+const uint8_t APDU_ERROR_REPONSE[] = {0x6A, 0x82};
+
 /* Admin cards UID */
 const uint8_t ADMIN_CARD_UID[] = {0x73, 0x10, 0x92, 0x8A};
 const uint8_t ACCESS_CARD_UID[] = {0xD3, 0xD7, 0xD7, 0xE};
@@ -27,6 +31,9 @@ const uint8_t ACCESS_CARD_UID[] = {0xD3, 0xD7, 0xD7, 0xE};
 /* Create global request and response structures to store payloads */
 requestStruct *requestPayload;
 responseStruct *responsePayload;
+
+/* Global boolean flag */
+bool isPushedForExit = false;
 
 /* Global request and response initialization */
 static void requestStruct_init();
@@ -39,10 +46,11 @@ static cJSON *createRequestJson(uint8_t *userAttributes, uint8_t userAttributesS
 
 /* Get and enforce access decision */
 static bool getDecisionValue(cJSON *jsonObj, const char *key);
-static void grantAccess();
+static void grantAccess(bool isEntering);
 static void denyAccess();
 
-/* Interrupt function in case of tampering */
+/* Interrupt functions */
+void isrButton();
 void isrReed();
 
 extern "C" void app_main(void)
@@ -58,6 +66,9 @@ extern "C" void app_main(void)
 
     /* Initialze Non-Volatile Attributes Storage */
     nvs_attributesInit();
+
+    /* Initialize Push button and attack interrupt function */
+    button_init(isrButton);
 
     /* Initialize Reed switch and attach interrupt function */
     reed_init(isrReed);
@@ -108,6 +119,13 @@ extern "C" void app_main(void)
             uint8_t *userAttributes = pn532_getAPDUPayload();
             uint8_t userAttributesSize = pn532_getAPDUPayloadSize();
 
+            if (memcmp(userAttributes, APDU_ERROR_REPONSE, sizeof(APDU_ERROR_REPONSE)) == 0)
+            {
+                denyAccess();
+                lcd_printCustom("Unlock Phone", 0, 2);
+                continue;
+            }
+
             /* Create JSON request body (user + access point attributes) */
             cJSON *requestJson = createRequestJson(userAttributes, userAttributesSize);
 
@@ -124,11 +142,14 @@ extern "C" void app_main(void)
             bool accessGranted = getDecisionValue(responseJson, "decision");
 
             /* Evaluate and grant or deny access */
-            accessGranted ? grantAccess() : denyAccess();
+            accessGranted ? grantAccess(true) : denyAccess();
 
             /* Delete cJSON objects */
             cJSON_Delete(requestJson);
             cJSON_Delete(responseJson);
+
+            /* Buffer delay (1 sec) between attempts */
+            delay(1000);
         }
 
         else if (!isEmulatedCard && pn532_startUIDExchange())
@@ -145,26 +166,44 @@ extern "C" void app_main(void)
                 led_setRGB(LED_OFF, LED_OFF, LED_OFF);
 
                 /* Set isTampered flag to false in NVS */
-                nvs_setBoolAttribute("isTampered", false);
+                nvs_setBoolAttribute("IT", false);
                 attachInterrupt(REED_DIGITAL_INPUT, isrReed, FALLING);
 
                 /* Ensure that magnet is back */
                 isrReed();
+
+                /* Buffer delay (1 sec) between attempts */
+                delay(1000);
             }
             else if (memcmp(cardUID, ACCESS_CARD_UID, sizeof(ACCESS_CARD_UID)) == 0)
             {
                 /* Open door for admin */
-                grantAccess();
+                grantAccess(true);
+
+                /* Buffer delay (1 sec) between attempts */
+                delay(1000);
             }
-            else {
+            else
+            {
                 Serial.println("Admin cards not recognized !");
             }
-        } else {
+        }
+        else if (isPushedForExit)
+        {
+            lcd_printHome("Works right");
+            buzzer_on();
+            led_setRGB(0, 0, 255);
+            delay(1000);
+            buzzer_off();
+            led_setRGB(0, 0, 0);
+            isPushedForExit = false;
+        }
+        else
+        {
             Serial.println("No card found !");
         }
     }
 }
-
 
 static void requestStruct_init()
 {
@@ -254,26 +293,31 @@ static uint8_t *convertJsonToByteArray(cJSON *jsonObj, size_t *requestSize)
 
 cJSON *createRequestJson(uint8_t *userAttributes, uint8_t userAttributesSize)
 {
-    cJSON *userAttributesJson = cJSON_CreateObject();
-    userAttributesJson = convertByteArrayToJSON(userAttributes, userAttributesSize);
+    cJSON *receivedPayloadJson = cJSON_CreateObject();
+    receivedPayloadJson = convertByteArrayToJSON(userAttributes, userAttributesSize);
+
+    // Extract user attributes and nonce from payload
+    cJSON *receivedUAT = cJSON_GetObjectItemCaseSensitive(receivedPayloadJson, "UAT");
+    cJSON *receivedNonce = cJSON_GetObjectItemCaseSensitive(receivedPayloadJson, "NC");
 
     // Make JSON object from access point attributes
-    const char *id = nvs_getStringAttribute("id");
-    const char *location = nvs_getStringAttribute("location");
-    bool isTampered = nvs_getBoolAttribute("isTampered");
-    uint64_t occupancyLevel = nvs_getIntAttribute("occupancyLevel");
+    const char *id = nvs_getStringAttribute("ID");
+    const char *location = nvs_getStringAttribute("LC");
+    bool isTampered = nvs_getBoolAttribute("IT");
+    int16_t occupancyLevel = nvs_getIntAttribute("OL");
 
     // Create cJSON objects for each attribute
     cJSON *accessPointAttributesJson = cJSON_CreateObject();
-    cJSON_AddStringToObject(accessPointAttributesJson, "id", id);
-    cJSON_AddStringToObject(accessPointAttributesJson, "location", location);
-    cJSON_AddBoolToObject(accessPointAttributesJson, "isTampered", isTampered);
-    cJSON_AddNumberToObject(accessPointAttributesJson, "occupancyLevel", occupancyLevel);
+    cJSON_AddStringToObject(accessPointAttributesJson, "ID", id);
+    cJSON_AddStringToObject(accessPointAttributesJson, "LC", location);
+    cJSON_AddBoolToObject(accessPointAttributesJson, "IT", isTampered);
+    cJSON_AddNumberToObject(accessPointAttributesJson, "OL", occupancyLevel);
 
     // Create cJSON object for the main structure
     cJSON *requestJson = cJSON_CreateObject();
-    cJSON_AddItemToObject(requestJson, "userAttributes", userAttributesJson);
-    cJSON_AddItemToObject(requestJson, "accessPointAttributes", accessPointAttributesJson);
+    cJSON_AddItemToObject(requestJson, "UAT", receivedUAT);
+    cJSON_AddItemToObject(requestJson, "APA", accessPointAttributesJson);
+    cJSON_AddItemToObject(requestJson, "NC", receivedNonce);
 
     // Print the JSON string (for testing)
     char *jsonString = cJSON_Print(requestJson);
@@ -308,13 +352,22 @@ static bool getDecisionValue(cJSON *jsonObj, const char *key)
     return false;
 }
 
-static void grantAccess()
+static void grantAccess(bool isEntering)
 {
     lcd_printHome("Access Granted !");
 
     // Update Occupancy Level
-    uint64_t occupancyLevel = nvs_getIntAttribute("occupancyLevel");
-    nvs_setIntAttribute("occupancyLevel", occupancyLevel + 1);
+    int32_t occupancyLevel = nvs_getIntAttribute("OL");
+
+    // Increment counter if user is entering, otherwise, decrement
+    if (isEntering)
+    {
+        nvs_setIntAttribute("OL", occupancyLevel + 1);
+    }
+    else
+    {
+        nvs_setIntAttribute("OL", max(occupancyLevel - 1, 0));
+    }
 
     Serial.print("Occupancy Level: ");
     Serial.println(occupancyLevel);
@@ -324,7 +377,7 @@ static void grantAccess()
     buzzer_on();
     lock_open();
 
-    delay(1000);
+    delay(1250);
 
     // Turn led off
     led_setRGB(LED_OFF, LED_OFF, LED_OFF);
@@ -342,6 +395,17 @@ static void denyAccess()
     led_setRGB(LED_OFF, LED_OFF, LED_OFF);
 }
 
+void isrButton()
+{
+    bool isPushed = digitalRead(BUTTON_INPUT);
+
+    if (isPushed)
+    {
+        Serial.println("Push button pressed !! Open door for exit");
+        isPushedForExit = true;
+    }
+}
+
 void isrReed()
 {
     /* Double check to ensure consistent readings */
@@ -351,9 +415,9 @@ void isrReed()
     {
         Serial.println("Tamper detected !!");
         /* Set isTampered flag to true in NVS */
-        nvs_setBoolAttribute("isTampered", true);
+        nvs_setBoolAttribute("IT", true);
 
-        Serial.println(nvs_getBoolAttribute("isTampered"));
+        Serial.println(nvs_getBoolAttribute("IT"));
 
         /* Detach interrupt so it is triggered only once */
         detachInterrupt(digitalPinToInterrupt(REED_DIGITAL_INPUT));
