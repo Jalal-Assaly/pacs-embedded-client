@@ -6,12 +6,15 @@ void nvs_attributesInit()
     NVS.begin("attributes");
 
     // Set static attributes of access point (never changed)
-    NVS.setString("id", ACCESS_POINT_ID);
-    NVS.setString("location", ACCESS_POINT_LOCATION);
-    NVS.setInt("isTampered", (uint8_t)false);
+    NVS.setString("ID", ACCESS_POINT_ID);
+    NVS.setString("LC", ACCESS_POINT_LOCATION);
     
-    // Set dynamic attributes of access point (changed with access attempts)
-    if (!NVS.getInt("occupancyLevel")) NVS.setInt("occupancyLevel", 0);
+    // Set dynamic attributes of access point (changed with each access attempts)
+    int8_t itValue = NVS.getInt("IT", -1);
+    if (itValue == -1) NVS.setInt("IT", (int8_t)false);
+    
+    int16_t olValue = NVS.getInt("OL", -1);
+    if (olValue == -1) NVS.setInt("OL", 0);
 }
 
 bool nvs_setStringAttribute(const char* key, char* value)
@@ -24,17 +27,17 @@ const char* nvs_getStringAttribute(const char* key)
     return strdup(NVS.getString(key).c_str());
 }
 
-bool nvs_setIntAttribute(const char* key, uint64_t value)
+bool nvs_setIntAttribute(const char* key, int16_t value)
 {
     return NVS.setInt(key, value);
 }
 
-uint64_t nvs_getIntAttribute(const char* key)
+int16_t nvs_getIntAttribute(const char* key)
 {
     return NVS.getInt(key);
 }
 
-bool nvs_setBoolAttribute(const char* key, uint8_t value) 
+bool nvs_setBoolAttribute(const char* key, int8_t value) 
 {
     return NVS.setInt(key, value);
 }
