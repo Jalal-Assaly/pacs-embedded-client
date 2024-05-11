@@ -278,7 +278,7 @@ void coap_send_request(requestStruct *requestPayload, responseStruct *responsePa
 
     /* Create Session and Protocol Data Unit for request */
     request = coap_new_pdu(coap_is_mcast(dst_addr) ? COAP_MESSAGE_NON : COAP_MESSAGE_CON,
-                           COAP_REQUEST_CODE_PUT, session);
+                           COAP_REQUEST_CODE_POST, session);
     if (!request)
     {
         ESP_LOGE(TAG, "coap_new_pdu() failed");
