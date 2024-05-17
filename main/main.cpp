@@ -147,9 +147,6 @@ extern "C" void app_main(void)
             /* Delete cJSON objects */
             cJSON_Delete(requestJson);
             cJSON_Delete(responseJson);
-
-            /* Buffer delay (1 sec) between attempts */
-            delay(1000);
         }
 
         else if (!isEmulatedCard && pn532_startUIDExchange())
@@ -190,17 +187,13 @@ extern "C" void app_main(void)
         }
         else if (isPushedForExit)
         {
-            lcd_printHome("Works right");
-            buzzer_on();
-            led_setRGB(0, 0, 255);
-            delay(1000);
-            buzzer_off();
-            led_setRGB(0, 0, 0);
+            grantAccess(false);
             isPushedForExit = false;
         }
         else
         {
             Serial.println("No card found !");
+            delay(1000);
         }
     }
 }
@@ -369,7 +362,8 @@ static void grantAccess(bool isEntering)
         nvs_setIntAttribute("OL", max(occupancyLevel - 1, 0));
     }
 
-    Serial.print("Occupancy Level: ");
+    occupancyLevel = nvs_getIntAttribute("OL");
+    Serial.print("Updted occupancy Level: ");
     Serial.println(occupancyLevel);
 
     // Trigger Actuators
@@ -377,7 +371,7 @@ static void grantAccess(bool isEntering)
     buzzer_on();
     lock_open();
 
-    delay(1250);
+    delay(1000);
 
     // Turn led off
     led_setRGB(LED_OFF, LED_OFF, LED_OFF);

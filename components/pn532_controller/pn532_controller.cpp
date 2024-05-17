@@ -93,7 +93,8 @@ void pn532_init()
     Serial.println("Waiting for an ISO14443A card\n");
 }
 
-bool pn532_startUIDExchange() {
+bool pn532_startUIDExchange()
+{
     return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
 }
 
@@ -122,7 +123,7 @@ bool pn532_startAPDUExchange()
             Serial.print("NFC payload length: ");
             Serial.println(responseLength);
             Serial.print("NFC payload: ");
-            Serial.println((char*)response); // Show response in bytes
+            Serial.println((char *)response); // Show response in bytes
 
             // Release the currently selected target
             nfc.inRelease();
