@@ -12,6 +12,7 @@ void pn532_init();
 
 bool pn532_startUIDExchange();
 bool pn532_startAPDUExchange();
+void pn532_setPassiveActivationRetries(int maxRetries);
 
 uint8_t* pn532_getUID();
 uint8_t* pn532_getAPDUPayload();

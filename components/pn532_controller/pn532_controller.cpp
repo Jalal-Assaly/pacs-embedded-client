@@ -93,6 +93,10 @@ void pn532_init()
     Serial.println("Waiting for an ISO14443A card\n");
 }
 
+void pn532_setPassiveActivationRetries(int maxRetries) {
+    nfc.setPassiveActivationRetries(maxRetries);
+}
+
 bool pn532_startUIDExchange()
 {
     return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);

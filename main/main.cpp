@@ -61,31 +61,53 @@ extern "C" void app_main(void)
 
     /* Initialize LCD Screen */
     lcd_init();
-    lcd_printHome("Device");
-    lcd_printCustom("Initialization", 0, 2);
 
     /* Initialze Non-Volatile Attributes Storage */
+    lcd_printHome("Initializing");
+    lcd_printCustom("NVS", 0, 2);
+
     nvs_attributesInit();
 
     /* Initialize Push button and attack interrupt function */
+    lcd_printHome("Initializing");
+    lcd_printCustom("Push Button", 0, 2);
+
     button_init(isrButton);
 
     /* Initialize Reed switch and attach interrupt function */
+    lcd_printHome("Initializing");
+    lcd_printCustom("Reed Switch", 0, 2);
+
     reed_init(isrReed);
 
     /* Initialize LED RGB */
+    lcd_printHome("Initializing");
+    lcd_printCustom("RGB LED", 0, 2);
+
     led_init();
 
     /* Initialize Buzzer */
+    lcd_printHome("Initializing");
+    lcd_printCustom("Buzzer", 0, 2);
+
     buzzer_init();
 
     /* Initialize Lock */
+    lcd_printHome("Initializing");
+    lcd_printCustom("Door Lock", 0, 2);
+
     lock_init();
 
     /* Initialize PN532 Reader */
+    lcd_printHome("Initializing");
+    lcd_printCustom("PN532 Reader", 0, 2);
+
     pn532_init();
 
     /* Initialize CoAP Protocol */
+    lcd_printHome("Initializing");
+    lcd_printCustom("WiFi Connection", 0, 2);
+
     ESP_ERROR_CHECK(esp_netif_init());                // Initialize TCP/UDP stack + WIFI (from menu config)
     ESP_ERROR_CHECK(esp_event_loop_create_default()); // Initialze event handler for wifi setup
     ESP_ERROR_CHECK(example_connect());
@@ -189,6 +211,12 @@ extern "C" void app_main(void)
         {
             grantAccess(false);
             isPushedForExit = false;
+
+            // Reset retries to maximum value
+            pn532_setPassiveActivationRetries(0xFF);
+
+            // Reattach interrupt to enable button click again
+            attachInterrupt(BUTTON_INPUT, isrButton, RISING);
         }
         else
         {
@@ -397,6 +425,12 @@ void isrButton()
     {
         Serial.println("Push button pressed !! Open door for exit");
         isPushedForExit = true;
+
+        // Skip next retry to open door directly
+        pn532_setPassiveActivationRetries(0x60);
+
+        // Detach interrupt to avoid double-click error
+        detachInterrupt(digitalPinToInterrupt(BUTTON_INPUT));
     }
 }
 
