@@ -2,7 +2,6 @@
 #ifndef NVS_ATTRIBUTES_MANAGER_H
 #define NVS_ATTRIBUTES_MANAGER_H
 
-#define     ACCESS_POINT_ID          "2"
 #define     ACCESS_POINT_LOCATION    "C213"
 
 void nvs_attributesInit();

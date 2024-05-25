@@ -5,8 +5,7 @@ void nvs_attributesInit()
 {
     NVS.begin("attributes");
 
-    // Set static attributes of access point (never changed)
-    NVS.setString("ID", ACCESS_POINT_ID);
+    // Set Location Attribute
     NVS.setString("LC", ACCESS_POINT_LOCATION);
     
     // Set dynamic attributes of access point (changed with each access attempts)
