@@ -322,14 +322,12 @@ cJSON *createRequestJson(uint8_t *userAttributes, uint8_t userAttributesSize)
     cJSON *receivedNonce = cJSON_GetObjectItemCaseSensitive(receivedPayloadJson, "NC");
 
     // Make JSON object from access point attributes
-    const char *id = nvs_getStringAttribute("ID");
     const char *location = nvs_getStringAttribute("LC");
     bool isTampered = nvs_getBoolAttribute("IT");
     int16_t occupancyLevel = nvs_getIntAttribute("OL");
 
     // Create cJSON objects for each attribute
     cJSON *accessPointAttributesJson = cJSON_CreateObject();
-    cJSON_AddStringToObject(accessPointAttributesJson, "ID", id);
     cJSON_AddStringToObject(accessPointAttributesJson, "LC", location);
     cJSON_AddBoolToObject(accessPointAttributesJson, "IT", isTampered);
     cJSON_AddNumberToObject(accessPointAttributesJson, "OL", occupancyLevel);
