@@ -102,7 +102,7 @@ bool pn532_startUIDExchange()
     return nfc.readPassiveTargetID(PN532_MIFARE_ISO14443A, &uid[0], &uidLength);
 }
 
-bool pn532_startAPDUExchange()
+APDUResult pn532_startAPDUExchange()
 {
     Serial.println("Scanning emulated APDU card");
     bool isInListPassiveTag = false;
@@ -132,14 +132,17 @@ bool pn532_startAPDUExchange()
             // Release the currently selected target
             nfc.inRelease();
             Serial.println("Target released\n");
+
+            return EMULATED_CARD_FOUND;
         }
         else
         {
             Serial.println("Emulated card found but communication failed !\n");
+            return CONNECTION_INTERRUPTED;
         }
     }
 
-    return isInListPassiveTag & isEmulatedAPDUCard;
+    return EMULATED_CARD_NOT_FOUND;
 }
 
 uint8_t *pn532_getUID()

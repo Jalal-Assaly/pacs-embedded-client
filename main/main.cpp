@@ -22,7 +22,8 @@ extern "C"
 }
 
 /* APDU Error Response */
-const uint8_t APDU_ERROR_REPONSE[] = {0x6A, 0x82};
+const uint8_t APDU_ERROR_REPONSE_UINT8_T[] = {0x6A, 0x82};
+const char APDU_ERROR_REPONSE_CHAR[] = {'6', 'A', '8', '2'};
 
 /* Admin cards UID */
 const uint8_t ADMIN_CARD_UID[] = {0x73, 0x10, 0x92, 0x8A};
@@ -131,9 +132,9 @@ extern "C" void app_main(void)
         lcd_printCustom("a card", 0, 2);
 
         /* Attempts to perform APDU exchange with emulated card */
-        bool isEmulatedCard = pn532_startAPDUExchange();
+        APDUResult emulatedCard = pn532_startAPDUExchange();
 
-        if (isEmulatedCard)
+        if (emulatedCard == EMULATED_CARD_FOUND)
         {
             lcd_printHome("Request Pending...");
 
@@ -141,10 +142,11 @@ extern "C" void app_main(void)
             uint8_t *userAttributes = pn532_getAPDUPayload();
             uint8_t userAttributesSize = pn532_getAPDUPayloadSize();
 
-            if (memcmp(userAttributes, APDU_ERROR_REPONSE, sizeof(APDU_ERROR_REPONSE)) == 0)
+            if ((memcmp(userAttributes, APDU_ERROR_REPONSE_UINT8_T, userAttributesSize) == 0) || 
+            (memcmp(userAttributes, APDU_ERROR_REPONSE_CHAR, userAttributesSize) == 0))
             {
                 denyAccess();
-                lcd_printCustom("Unlock Phone", 0, 2);
+                lcd_printCustom("Please Log In", 0, 2);
                 continue;
             }
 
@@ -171,7 +173,7 @@ extern "C" void app_main(void)
             cJSON_Delete(responseJson);
         }
 
-        else if (!isEmulatedCard && pn532_startUIDExchange())
+        else if ((emulatedCard != EMULATED_CARD_FOUND) && pn532_startUIDExchange())
         {
             /* Attempts to read UID of regular card */
             uint8_t *cardUID = pn532_getUID();
@@ -206,6 +208,16 @@ extern "C" void app_main(void)
             {
                 Serial.println("Admin cards not recognized !");
             }
+        }
+        else if (emulatedCard == CONNECTION_INTERRUPTED)
+        {
+            lcd_printHome("Connection Error!");
+            lcd_printCustom("Try again", 0, 2);
+
+            led_setRGB(LED_ON, LED_OFF, LED_OFF);
+            for (uint8_t i = 0; i < 4; i++)
+                buzzer_onFor(100);
+            led_setRGB(LED_OFF, LED_OFF, LED_OFF);
         }
         else if (isPushedForExit)
         {
@@ -389,7 +401,7 @@ static void grantAccess(bool isEntering)
     }
 
     occupancyLevel = nvs_getIntAttribute("OL");
-    Serial.print("Updted occupancy Level: ");
+    Serial.print("Updated occupancy Level: ");
     Serial.println(occupancyLevel);
 
     // Trigger Actuators
