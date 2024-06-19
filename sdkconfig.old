@@ -142,7 +142,7 @@ CONFIG_PARTITION_TABLE_MD5=y
 #
 # Example CoAP Client Configuration
 #
-CONFIG_EXAMPLE_TARGET_DOMAIN_URI="coaps://192.168.56.1:5684/accessControl"
+CONFIG_EXAMPLE_TARGET_DOMAIN_URI="coaps://192.168.1.58:5684/accessControl"
 CONFIG_EXAMPLE_COAP_PSK_KEY="secretPSK"
 CONFIG_EXAMPLE_COAP_PSK_IDENTITY="AccessPoint"
 # end of Example CoAP Client Configuration

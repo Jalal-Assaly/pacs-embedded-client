@@ -146,7 +146,6 @@ extern "C" void app_main(void)
             (memcmp(userAttributes, APDU_ERROR_REPONSE_CHAR, userAttributesSize) == 0))
             {
                 denyAccess();
-                lcd_printCustom("Please Log In", 0, 2);
                 continue;
             }
 
@@ -195,6 +194,8 @@ extern "C" void app_main(void)
 
                 /* Buffer delay (1 sec) between attempts */
                 delay(1000);
+
+                continue;
             }
             else if (memcmp(cardUID, ACCESS_CARD_UID, sizeof(ACCESS_CARD_UID)) == 0)
             {
@@ -203,10 +204,13 @@ extern "C" void app_main(void)
 
                 /* Buffer delay (1 sec) between attempts */
                 delay(1000);
+
+                continue;
             }
             else
             {
                 Serial.println("Admin cards not recognized !");
+                continue;
             }
         }
         else if (emulatedCard == CONNECTION_INTERRUPTED)
@@ -409,12 +413,14 @@ static void grantAccess(bool isEntering)
     buzzer_on();
     lock_open();
 
-    delay(1000);
+    delay(2000);
 
     // Turn led off
     led_setRGB(LED_OFF, LED_OFF, LED_OFF);
     buzzer_off();
     lock_close();
+
+    delay(500);
 }
 
 static void denyAccess()

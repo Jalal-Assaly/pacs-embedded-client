@@ -13,7 +13,7 @@ void nvs_attributesInit()
     if (itValue == -1) NVS.setInt("IT", (int8_t)false);
     
     int16_t olValue = NVS.getInt("OL", -1);
-    if (olValue == -1) NVS.setInt("OL", 0);
+    if (olValue == -1) NVS.setInt("OL", 1);
 }
 
 bool nvs_setStringAttribute(const char* key, char* value)

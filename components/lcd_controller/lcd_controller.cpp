@@ -9,7 +9,7 @@ void lcd_init() {
     lcd.begin(16, 2);
     lcd.noBlink();
     lcd.noCursor();
-    delay(100);
+    delay(200);
 }
 
 void lcd_clear() {
@@ -19,6 +19,8 @@ void lcd_clear() {
 void lcd_printHome(const char* message) {
     lcd.clear();
     lcd.home();
+    delay(100);
+
     lcd.print(message);
 }
 
@@ -28,5 +30,7 @@ void lcd_setCursor(uint8_t col, uint8_t row) {
 
 void lcd_printCustom(const char* message, uint8_t col, uint8_t row) {
     lcd.setCursor(col, row);
+    delay(100);
+
     lcd.print(message);
 }
