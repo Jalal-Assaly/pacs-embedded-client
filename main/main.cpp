@@ -420,7 +420,7 @@ static void grantAccess(bool isEntering)
     buzzer_off();
     lock_close();
 
-    delay(500);
+    lcd_init();
 }
 
 static void denyAccess()
